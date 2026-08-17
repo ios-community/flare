@@ -1,0 +1,24 @@
+[package]
+name = "flare-ffi"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "C/C++ ABI exports for FLARE and the optional CudaSyncDriver GPU runtime synchronization implementation."
+keywords.workspace = true
+categories.workspace = true
+build = "build.rs"
+
+[features]
+default = ["cpu"]
+cpu = []
+cuda = []
+
+[dependencies]
+flare-core = { path = "../flare-core", version = "0.1.0" }
+flare-vector = { path = "../flare-vector", version = "0.1.0" }
+flare-kv = { path = "../flare-kv", version = "0.1.0" }
+
+[build-dependencies]
+cbindgen = { version = "0.29.4", default-features = false }

@@ -1,0 +1,31 @@
+[package]
+name = "flare-bench"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Criterion benchmarks for the FLARE workspace."
+publish = false
+
+[dependencies]
+flare-core = { path = "../flare-core", version = "0.1.0" }
+flare-vector = { path = "../flare-vector", version = "0.1.0" }
+flare-kv = { path = "../flare-kv", version = "0.1.0" }
+criterion = "0.5"
+rand = "0.8"
+
+[dev-dependencies]
+rand = "0.8"
+
+[[bench]]
+name = "tree_1d_lookup"
+harness = false
+
+[[bench]]
+name = "vector_search"
+harness = false
+
+[[bench]]
+name = "radix_attention_ttft"
+harness = false

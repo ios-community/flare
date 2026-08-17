@@ -1,0 +1,13 @@
+[package]
+name = "flare-kv"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "LLM KV-cache management extension for FLARE: radix attention prefix sharing, longest common prefix matching, and lock-free 2-bit slab clock eviction."
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+flare-core = { path = "../flare-core", version = "0.1.0" }

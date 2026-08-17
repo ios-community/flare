@@ -1,0 +1,17 @@
+[package]
+name = "flare-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Core primitives of FLARE: flat memory arena, 4 KB slab pools, 64-bit tagged pointer, adaptive radix nodes, hazard eras, async delta WAL, and the GpuSyncDriver trait. Compiled as #![no_std] + alloc."
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+
+[dependencies]
