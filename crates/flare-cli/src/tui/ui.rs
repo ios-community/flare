@@ -19,6 +19,190 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 
+/// Theme color palettes for the TUI.
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+pub struct Theme {
+    /// Tab bar: selected tab foreground.
+    pub tab_selected_fg: Color,
+    /// Tab bar: selected tab background.
+    pub tab_selected_bg: Color,
+    /// Tab bar: unselected tab foreground.
+    pub tab_unselected_fg: Color,
+    /// Tab bar: unselected tab background.
+    pub tab_unselected_bg: Color,
+    /// Header: paused status color.
+    pub status_paused: Color,
+    /// Header: running status color.
+    pub status_running: Color,
+    /// Gauge bar fill color.
+    pub gauge_fill: Color,
+    /// Gauge bar empty color.
+    pub gauge_empty: Color,
+    /// General text color.
+    pub text: Color,
+    /// Muted/dim text color.
+    pub text_dim: Color,
+    /// Accent/cyan color for highlights.
+    pub accent: Color,
+    /// Warning/yellow color.
+    pub warning: Color,
+    /// Success/green color.
+    pub success: Color,
+    /// Error/red color.
+    pub error: Color,
+    /// Border color.
+    pub border: Color,
+    /// Footer controls color.
+    pub controls: Color,
+}
+
+impl Theme {
+    /// Returns the theme for the given name.
+    pub fn from_name(name: &str) -> Self {
+        match name {
+            "light" => Self::light(),
+            "high-contrast" => Self::high_contrast(),
+            "protanopia" => Self::protanopia(),
+            "deuteranopia" => Self::deuteranopia(),
+            "tritanopia" => Self::tritanopia(),
+            _ => Self::dark(),
+        }
+    }
+
+    /// Default dark theme.
+    const fn dark() -> Self {
+        Self {
+            tab_selected_fg: Color::Black,
+            tab_selected_bg: Color::Cyan,
+            tab_unselected_fg: Color::White,
+            tab_unselected_bg: Color::DarkGray,
+            status_paused: Color::Yellow,
+            status_running: Color::Green,
+            gauge_fill: Color::White,
+            gauge_empty: Color::DarkGray,
+            text: Color::White,
+            text_dim: Color::DarkGray,
+            accent: Color::Cyan,
+            warning: Color::Yellow,
+            success: Color::Green,
+            error: Color::Red,
+            border: Color::DarkGray,
+            controls: Color::Cyan,
+        }
+    }
+
+    /// Light theme for bright terminals.
+    const fn light() -> Self {
+        Self {
+            tab_selected_fg: Color::White,
+            tab_selected_bg: Color::Blue,
+            tab_unselected_fg: Color::Black,
+            tab_unselected_bg: Color::Gray,
+            status_paused: Color::Red,
+            status_running: Color::Green,
+            gauge_fill: Color::Black,
+            gauge_empty: Color::Gray,
+            text: Color::Black,
+            text_dim: Color::DarkGray,
+            accent: Color::Blue,
+            warning: Color::Red,
+            success: Color::Green,
+            error: Color::Red,
+            border: Color::Gray,
+            controls: Color::Blue,
+        }
+    }
+
+    /// High contrast theme for accessibility.
+    const fn high_contrast() -> Self {
+        Self {
+            tab_selected_fg: Color::Black,
+            tab_selected_bg: Color::White,
+            tab_unselected_fg: Color::White,
+            tab_unselected_bg: Color::Black,
+            status_paused: Color::Yellow,
+            status_running: Color::Green,
+            gauge_fill: Color::White,
+            gauge_empty: Color::Black,
+            text: Color::White,
+            text_dim: Color::Gray,
+            accent: Color::Cyan,
+            warning: Color::Yellow,
+            success: Color::Green,
+            error: Color::Red,
+            border: Color::White,
+            controls: Color::Cyan,
+        }
+    }
+
+    /// Protanopia (red-blind) safe theme.
+    const fn protanopia() -> Self {
+        Self {
+            tab_selected_fg: Color::Black,
+            tab_selected_bg: Color::Cyan,
+            tab_unselected_fg: Color::White,
+            tab_unselected_bg: Color::DarkGray,
+            status_paused: Color::Blue,
+            status_running: Color::Green,
+            gauge_fill: Color::White,
+            gauge_empty: Color::DarkGray,
+            text: Color::White,
+            text_dim: Color::DarkGray,
+            accent: Color::Cyan,
+            warning: Color::Blue,
+            success: Color::Green,
+            error: Color::Magenta,
+            border: Color::DarkGray,
+            controls: Color::Cyan,
+        }
+    }
+
+    /// Deuteranopia (green-blind) safe theme.
+    const fn deuteranopia() -> Self {
+        Self {
+            tab_selected_fg: Color::Black,
+            tab_selected_bg: Color::Blue,
+            tab_unselected_fg: Color::White,
+            tab_unselected_bg: Color::DarkGray,
+            status_paused: Color::Yellow,
+            status_running: Color::Cyan,
+            gauge_fill: Color::White,
+            gauge_empty: Color::DarkGray,
+            text: Color::White,
+            text_dim: Color::DarkGray,
+            accent: Color::Blue,
+            warning: Color::Yellow,
+            success: Color::Cyan,
+            error: Color::Red,
+            border: Color::DarkGray,
+            controls: Color::Blue,
+        }
+    }
+
+    /// Tritanopia (blue-blind) safe theme.
+    const fn tritanopia() -> Self {
+        Self {
+            tab_selected_fg: Color::Black,
+            tab_selected_bg: Color::Yellow,
+            tab_unselected_fg: Color::White,
+            tab_unselected_bg: Color::DarkGray,
+            status_paused: Color::Red,
+            status_running: Color::Green,
+            gauge_fill: Color::White,
+            gauge_empty: Color::DarkGray,
+            text: Color::White,
+            text_dim: Color::DarkGray,
+            accent: Color::Yellow,
+            warning: Color::Red,
+            success: Color::Green,
+            error: Color::Red,
+            border: Color::DarkGray,
+            controls: Color::Yellow,
+        }
+    }
+}
+
 /// Names of the five dashboard tabs, numbered 1-5 for the user.
 pub const TAB_NAMES: [&str; 5] = [
     " 1 | Dashboard ",
@@ -80,6 +264,8 @@ pub struct FrameInfo {
     pub crash: Option<CrashReport>,
     /// Last memory exhaustion report.
     pub pressure: Option<PressureReport>,
+    /// Active color theme.
+    pub theme: Theme,
 }
 
 impl TuiApp {
@@ -133,17 +319,19 @@ impl TuiApp {
             storm: self.storm,
             crash: self.crash,
             pressure: self.pressure,
+            theme: Theme::from_name(&self.config.tui.theme),
         }
     }
 
     /// Renders the tab bar header.
     fn draw_header(frame: &mut Frame<'_>, area: Rect, info: &FrameInfo) {
+        let theme = &info.theme;
         let mut spans = Vec::with_capacity(TAB_NAMES.len());
         for (index, name) in TAB_NAMES.iter().enumerate() {
             let (fg, bg) = if index == info.tab {
-                (Color::Black, Color::Cyan)
+                (theme.tab_selected_fg, theme.tab_selected_bg)
             } else {
-                (Color::White, Color::DarkGray)
+                (theme.tab_unselected_fg, theme.tab_unselected_bg)
             };
             spans.push(Span::styled(
                 *name,
@@ -155,15 +343,15 @@ impl TuiApp {
             status,
             Style::default()
                 .fg(if info.paused {
-                    Color::Yellow
+                    theme.status_paused
                 } else {
-                    Color::Green
+                    theme.status_running
                 })
                 .add_modifier(Modifier::BOLD),
         ));
         frame.render_widget(
             Paragraph::new(Line::from(spans))
-                .block(Block::default().borders(Borders::ALL).title(" FLARE ")),
+                .block(Block::default().borders(Borders::ALL).title(" FLARE ").border_style(Style::default().fg(theme.border))),
             area,
         );
     }
@@ -184,20 +372,21 @@ impl TuiApp {
                 0,
                 Line::from(Span::styled(
                     "no events yet",
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(info.theme.text_dim),
                 )),
             );
         }
         let controls = tab_controls(info.tab);
         lines.push(Line::from(Span::styled(
             controls,
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(info.theme.controls),
         )));
         frame.render_widget(
             Paragraph::new(lines).block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(" Events / Controls "),
+                    .title(" Events / Controls ")
+                    .border_style(Style::default().fg(info.theme.border)),
             ),
             area,
         );

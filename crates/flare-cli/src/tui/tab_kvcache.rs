@@ -68,6 +68,8 @@ fn kv_row(l_label: &str, l_val: String, r_label: &str, r_val: String) -> Line<'s
 
 #[cfg(test)]
 mod tests {
+    use crate::tui::ui::Theme;
+
     /// Verifies the tab module renders without panicking via a full draw.
     #[test]
     fn kvcache_tab_smoke() {
@@ -97,6 +99,7 @@ mod tests {
             storm: None,
             crash: None,
             pressure: None,
+            theme: Theme::from_name("dark"),
         };
         assert_eq!(info.tab, 3);
     }

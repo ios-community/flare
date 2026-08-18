@@ -190,6 +190,8 @@ pub struct TuiApp {
     pub crash: Option<CrashReport>,
     /// Last memory exhaustion audit report.
     pub pressure: Option<PressureReport>,
+    /// Loaded configuration.
+    pub config: crate::config::Config,
 }
 
 impl TuiApp {
@@ -200,7 +202,13 @@ impl TuiApp {
     ///
     /// Returns the underlying [`FlareError`] when an arena allocation
     /// fails.
-    pub fn new(arena_capacity: usize) -> Result<Self, FlareError> {
+    pub fn new(
+        arena_capacity: usize,
+        default_tab: usize,
+        start_paused: bool,
+        _refresh_ms: u64,
+        config: crate::config::Config,
+    ) -> Result<Self, FlareError> {
         let hazard = Arc::new(HazardManager::new());
         let tree = Arc::new(FlareArtTree::new(
             Arc::new(FlatArena::new(arena_capacity)?),
@@ -226,7 +234,7 @@ impl TuiApp {
         let counters = Arc::new(Counters::new());
         let ring = Arc::new(Collector::default());
         let shutdown = Arc::new(AtomicBool::new(false));
-        let paused_shared = Arc::new(AtomicBool::new(true));
+        let paused_shared = Arc::new(AtomicBool::new(start_paused));
         let (chaos_tx, chaos_rx) = channel();
 
         let workload = spawn_workload(
@@ -249,8 +257,8 @@ impl TuiApp {
             counters,
             ring,
             log: VecDeque::new(),
-            tab: 0,
-            paused: true,
+            tab: default_tab.min(4),
+            paused: start_paused,
             shutdown,
             paused_shared,
             workload: Some(workload),
@@ -270,6 +278,7 @@ impl TuiApp {
             storm: None,
             crash: None,
             pressure: None,
+            config,
         })
     }
 
@@ -592,6 +601,7 @@ fn sink_alloc_and_flush(
 #[cfg(test)]
 mod tests {
     use super::{CounterSnapshot, Counters, TuiApp};
+    use crate::config::Config;
     use std::sync::atomic::Ordering;
 
     /// Verifies that counter snapshots accumulate work.
@@ -609,7 +619,7 @@ mod tests {
     /// Verifies that the app constructs and shuts down cleanly.
     #[test]
     fn app_constructs_and_shuts_down() {
-        let mut app = TuiApp::new(1 << 22).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
         let deadline = std::time::Instant::now() + std::time::Duration::from_mins(2);
         let mut snapshot = app.counters.snapshot();
         assert_eq!(snapshot.inserts, 0, "workload must start paused");
@@ -629,7 +639,7 @@ mod tests {
     /// Verifies that the burst insert reports its inserted count.
     #[test]
     fn burst_insert_counts_work() {
-        let mut app = TuiApp::new(1 << 22).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
         let inserted = app.burst_insert(128);
         assert_eq!(inserted, 128);
         app.shutdown();
@@ -638,7 +648,7 @@ mod tests {
     /// Verifies that launching every chaos scenario stays usable.
     #[test]
     fn chaos_scenarios_launch_and_report() {
-        let mut app = TuiApp::new(1 << 22).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
         app.launch_storm();
         app.launch_pressure();
         let deadline = std::time::Instant::now() + std::time::Duration::from_mins(1);

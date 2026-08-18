@@ -9,12 +9,16 @@
 #![deny(missing_docs)]
 
 mod chaos;
+mod config;
 mod repl;
 mod telemetry;
 mod tui;
 
 use crate::chaos::ChaosArgs;
-use clap::{Parser, Subcommand};
+use crate::config::{apply_config_to_tui, load_config};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
+use clap_mangen::Man;
 
 /// Interactive workbench for the FLARE engine stack.
 #[derive(Debug, Parser)]
@@ -29,19 +33,51 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Real-time TUI dashboard (five tabs).
-    Tui(TuiArgs),
+    Tui(CliTuiArgs),
     /// Interactive REPL shell.
     Repl(ReplArgs),
     /// Headless chaos stress-testing arena.
     Chaos(ChaosArgs),
+    /// Generate shell completions.
+    Completion(CompletionArgs),
+    /// Generate man pages.
+    GenerateMan(ManArgs),
+}
+
+/// Arguments for the `completion` subcommand.
+#[derive(Debug, clap::Args)]
+struct CompletionArgs {
+    /// Target shell.
+    #[arg(value_enum, default_value = "bash")]
+    shell: Shell,
+}
+
+/// Arguments for the `generate-man` subcommand.
+#[derive(Debug, clap::Args)]
+struct ManArgs {
+    /// Output directory for generated man pages.
+    #[arg(long, default_value = "man")]
+    out_dir: String,
 }
 
 /// Arguments of the `tui` subcommand.
 #[derive(Debug, clap::Args)]
-struct TuiArgs {
+struct CliTuiArgs {
     /// Arena byte limit shared by all engines (`4MB`, `64MB`, `1GB`).
     #[arg(long, default_value = "64MB")]
     arena: String,
+    /// Default tab index (0=Dashboard, 1=Memory, 2=Vector, 3=KV-Cache, 4=Chaos).
+    #[arg(long, default_value = "0")]
+    tab: usize,
+    /// Refresh interval in milliseconds.
+    #[arg(long, default_value = "30")]
+    refresh: u64,
+    /// Theme: dark, light, high-contrast, protanopia, deuteranopia, tritanopia.
+    #[arg(long, default_value = "dark")]
+    theme: String,
+    /// Start with workload running (default: paused).
+    #[arg(long)]
+    run: bool,
 }
 
 /// Arguments of the `repl` subcommand.
@@ -54,21 +90,26 @@ struct ReplArgs {
 
 fn main() {
     let cli = Cli::parse();
+    let config = load_config();
     let exit_code = match cli.command {
-        Command::Tui(args) => match parse_arena(&args.arena) {
-            Ok(arena) => match tui::run(arena) {
+        Command::Tui(args) => {
+            let mut tui_args = apply_config_to_tui(&config);
+            // CLI overrides config
+            let arena = crate::config::parse_arena(&args.arena).unwrap_or(tui_args.arena_capacity);
+            tui_args.arena_capacity = arena;
+            tui_args.default_tab = args.tab.min(4);
+            tui_args.refresh_ms = args.refresh;
+            tui_args.theme = args.theme;
+            tui_args.start_paused = !args.run;
+            match tui::run(&tui_args) {
                 Ok(()) => 0,
                 Err(error) => {
                     eprintln!("tui error: {error}");
                     1
                 }
-            },
-            Err(message) => {
-                eprintln!("{message}");
-                2
             }
-        },
-        Command::Repl(args) => match parse_arena(&args.arena) {
+        }
+        Command::Repl(args) => match crate::config::parse_arena(&args.arena) {
             Ok(arena) => {
                 let _ = arena;
                 repl::run();
@@ -86,10 +127,25 @@ fn main() {
                 1
             }
         },
+        Command::Completion(args) => {
+            let mut cmd = Cli::command();
+            clap_complete::generate(args.shell, &mut cmd, "flare-cli", &mut std::io::stdout());
+            0
+        }
+        Command::GenerateMan(args) => {
+            let cmd = Cli::command();
+            let man = Man::new(cmd);
+            let out_dir = std::path::Path::new(&args.out_dir);
+            std::fs::create_dir_all(out_dir).expect("create man dir");
+            man.render(&mut std::fs::File::create(out_dir.join("flare-cli.1")).expect("create man file"))
+                .expect("render man page");
+            0
+        }
     };
     std::process::exit(exit_code);
 }
 
+#[allow(dead_code)]
 /// Parses a size string like `64MB` into bytes.
 fn parse_arena(raw: &str) -> Result<usize, String> {
     let trimmed = raw.trim();

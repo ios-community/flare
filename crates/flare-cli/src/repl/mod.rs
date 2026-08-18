@@ -10,6 +10,7 @@
 pub mod commands;
 pub mod highlighter;
 
+use crate::config::load_config;
 use crate::repl::commands::{ReplAction, ReplEngine};
 use crate::repl::highlighter::FlareHighlighter;
 use reedline::{
@@ -17,6 +18,7 @@ use reedline::{
     Signal,
 };
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 /// Maximum history lines kept by the shell.
 const HISTORY_LIMIT: usize = 2_000;
@@ -54,7 +56,10 @@ impl Prompt for FlarePrompt {
 /// Returns normally after the user exits with `exit`/`quit` or Ctrl-D.
 /// Prints any engine error as a red one-liner and continues.
 pub fn run() {
-    let mut engine = match ReplEngine::new(1 << 24) {
+    let config = load_config();
+    let arena_capacity = crate::config::parse_arena(&config.arena.capacity).unwrap_or(1 << 24);
+
+    let mut engine = match ReplEngine::new(arena_capacity) {
         Ok(engine) => engine,
         Err(error) => {
             eprintln!("failed to initialise REPL engines: {error}");
@@ -62,13 +67,12 @@ pub fn run() {
         }
     };
 
-    let completer = Box::new(DefaultCompleter::new_with_wordlen(
-        commands::COMMANDS
-            .iter()
-            .map(|cmd| (*cmd).to_string())
-            .collect(),
-        1,
-    ));
+    let commands: Vec<String> = crate::repl::commands::COMMANDS
+        .iter()
+        .map(|cmd| (*cmd).to_string())
+        .collect();
+
+    let completer = Box::new(DefaultCompleter::new_with_wordlen(commands, 1));
     let mut line_editor = Reedline::create()
         .with_completer(completer)
         .with_highlighter(Box::new(FlareHighlighter))
@@ -111,8 +115,10 @@ pub fn run() {
 }
 
 /// Returns the per-user history file path.
-fn history_path() -> std::path::PathBuf {
-    let mut path = std::env::temp_dir();
-    path.push("flare-repl-history.txt");
+fn history_path() -> PathBuf {
+    let mut path = dirs::data_local_dir().unwrap_or_else(std::env::temp_dir);
+    path.push("flare");
+    std::fs::create_dir_all(&path).ok();
+    path.push("repl-history.txt");
     path
 }
