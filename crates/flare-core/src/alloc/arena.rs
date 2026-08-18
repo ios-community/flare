@@ -185,6 +185,13 @@ impl FlatArena {
     /// `offset..offset + size` lies outside the arena or is not aligned to
     /// the value's alignment.
     ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `offset` addresses a region exclusively
+    /// owned by the caller (invariant I3) and that the region is not
+    /// concurrently accessed by other threads. The region must have been
+    /// allocated by [`Self::alloc`] and not yet published to other threads.
+    ///
     /// # Examples
     ///
     /// ```
@@ -222,6 +229,14 @@ impl FlatArena {
     ///
     /// Returns [`FlareError::ArenaBoundsExceeded`] when the region lies
     /// outside the arena.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `offset` addresses a region exclusively
+    /// owned by the caller (invariant I3) and that the region is not
+    /// concurrently accessed by other threads. The region must have been
+    /// allocated by [`Self::alloc`] and not yet published to other threads.
+    /// The `data` slice must not overlap with the destination region.
     pub fn write_bytes(&self, offset: u64, data: &[u8]) -> Result<(), FlareError> {
         let range = self.check_range(offset, data.len())?;
         // SAFETY: the destination range is validated in-bounds above, and
@@ -247,6 +262,13 @@ impl FlatArena {
     ///
     /// Returns [`FlareError::ArenaBoundsExceeded`] when the region lies
     /// outside the arena or is misaligned.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the region at `offset` has been
+    /// initialized with a valid `T` representation and that no concurrent
+    /// writes are occurring to the same region. The returned reference is
+    /// bound to the lifetime of the arena and must not outlive it.
     pub fn read_node<T>(&self, offset: u64) -> Result<&T, FlareError> {
         let len = size_of::<T>();
         let range = self.check_range(offset, len)?;
@@ -307,6 +329,13 @@ impl FlatArena {
     ///
     /// Returns [`FlareError::ArenaBoundsExceeded`] for out-of-bounds or
     /// misaligned offsets.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `offset` is 8-byte aligned and that the
+    /// 8-byte region is exclusively used for atomic operations. The returned
+    /// reference is bound to the lifetime of the arena and must not outlive
+    /// it. Concurrent atomic operations on the same word are safe.
     #[allow(clippy::cast_ptr_alignment)]
     pub fn atomic_word(&self, offset: u64) -> Result<&AtomicU64, FlareError> {
         let range = self.check_range(offset, 8)?;

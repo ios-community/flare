@@ -17,8 +17,6 @@
 //! The C API returns a status code `flare_status_t` where `0` means success
 //! and positive values map onto `flare_core::error::FlareError` variants
 //! (see `c_abi::flare_status`).
-#![no_std]
-
 extern crate alloc;
 
 /// C ABI exports over opaque engine handles.

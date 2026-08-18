@@ -338,6 +338,11 @@ impl<G: GpuSyncDriver> FlareArtTree<G> {
     /// pointer references a region outside the arena, indicating a
     /// lifecycle violation.
     ///
+    /// # Panics
+    ///
+    /// Panics if an internal tree invariant is violated (e.g. a stored
+    /// tagged pointer has a malformed discriminant).
+    ///
     /// # Examples
     ///
     /// ```
@@ -406,6 +411,11 @@ impl<G: GpuSyncDriver> FlareArtTree<G> {
     /// Returns [`FlareError::ArenaBoundsExceeded`] when a stored tagged
     /// pointer references a region outside the arena, indicating a
     /// lifecycle violation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal tree invariant is violated (e.g. a stored
+    /// tagged pointer has a malformed discriminant).
     ///
     /// # Examples
     ///
@@ -554,6 +564,11 @@ impl<G: GpuSyncDriver> FlareArtTree<G> {
     ///
     /// Returns arena bounds errors when a stored pointer is corrupted, or
     /// driver errors when the epoch fence fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal tree invariant is violated (e.g. a stored
+    /// tagged pointer has a malformed discriminant).
     ///
     /// # Examples
     ///
