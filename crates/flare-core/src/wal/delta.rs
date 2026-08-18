@@ -663,4 +663,34 @@ mod tests {
         tx.commit(&sink).expect("empty commit succeeds");
         assert!(sink.is_empty());
     }
+
+    /// Verifies that concurrent commits are serialised by the sink lock and
+    /// every batch lands in the log.
+    #[test]
+    fn concurrent_commits_are_serialised() {
+        use alloc_crate::vec::Vec;
+        use std::sync::{Arc, Barrier};
+        let sink = Arc::new(MemoryWalSink::new());
+        let barrier = Arc::new(Barrier::new(5));
+        let mut threads = Vec::new();
+        for _ in 0..4 {
+            let sink = Arc::clone(&sink);
+            let barrier = Arc::clone(&barrier);
+            threads.push(std::thread::spawn(move || {
+                barrier.wait();
+                for i in 0..64u64 {
+                    let tx = WalTransaction::new(
+                        vec![WalFrame::alloc(i * 64, 48)],
+                        WalFrame::update(i * 64, vec![0xAA]),
+                    );
+                    tx.commit(&*sink).expect("commit succeeds");
+                }
+            }));
+        }
+        barrier.wait();
+        for thread in threads {
+            thread.join().expect("worker finishes");
+        }
+        assert_eq!(sink.frame_count(), 256, "every batch is flushed once");
+    }
 }

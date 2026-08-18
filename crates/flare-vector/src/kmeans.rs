@@ -185,6 +185,10 @@ mod tests {
             Err(FlareError::InvalidParameter { .. })
         ));
         assert!(matches!(
+            kmeans_l2(0, 4, &data, 8, 1),
+            Err(FlareError::InvalidParameter { .. })
+        ));
+        assert!(matches!(
             kmeans_l2(3, 1, &data, 8, 1),
             Err(FlareError::VectorDimensionMismatch { .. })
         ));
