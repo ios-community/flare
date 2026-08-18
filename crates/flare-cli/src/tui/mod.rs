@@ -37,10 +37,7 @@ pub fn run(args: &TuiArgs) -> Result<(), Box<dyn Error>> {
 }
 
 /// Drives the event loop: draw, poll keys, pump engine state.
-fn run_loop(
-    terminal: &mut ratatui::DefaultTerminal,
-    args: &TuiArgs,
-) -> Result<(), Box<dyn Error>> {
+fn run_loop(terminal: &mut ratatui::DefaultTerminal, args: &TuiArgs) -> Result<(), Box<dyn Error>> {
     let config = crate::config::load_config();
     let mut state = crate::config::load_tui_state();
     let mut app = TuiApp::new(
@@ -82,8 +79,7 @@ fn handle_key(app: &mut TuiApp, code: KeyCode) {
         KeyCode::Char(' ') => app.toggle_pause(),
         KeyCode::Char('i') => {
             let inserted = app.burst_insert(1_000);
-            app.log
-                .push_back(format!("burst inserted {inserted} keys"));
+            app.log.push_back(format!("burst inserted {inserted} keys"));
         }
         KeyCode::Char('s') => {
             app.run_bench();
@@ -99,9 +95,7 @@ fn handle_key(app: &mut TuiApp, code: KeyCode) {
             Err(e) => app.log.push_back(format!("recluster failed: {e}")),
         },
         KeyCode::Char('n') => match app.new_chat_prefix() {
-            Ok(len) => app
-                .log
-                .push_back(format!("new chat prefix ({len} tokens)")),
+            Ok(len) => app.log.push_back(format!("new chat prefix ({len} tokens)")),
             Err(e) => app.log.push_back(format!("new prefix failed: {e}")),
         },
         KeyCode::Char('e') => {
@@ -127,7 +121,8 @@ mod tests {
     /// Verifies that tab keys switch tabs without panicking.
     #[test]
     fn tab_keys_switch_tabs() {
-        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default())
+            .expect("app construction succeeds");
         handle_key(&mut app, KeyCode::Char('2'));
         assert_eq!(app.tab, 1);
         handle_key(&mut app, KeyCode::Char('5'));
@@ -142,7 +137,8 @@ mod tests {
     /// Verifies that q and Esc request a quit.
     #[test]
     fn quit_keys_request_shutdown() {
-        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default())
+            .expect("app construction succeeds");
         assert!(!app.quit);
         handle_key(&mut app, KeyCode::Char('q'));
         assert!(app.quit);
@@ -152,7 +148,8 @@ mod tests {
     /// Verifies that the space key toggles the pause flag, starting paused.
     #[test]
     fn space_toggles_pause() {
-        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default())
+            .expect("app construction succeeds");
         assert!(app.paused, "workload must start paused");
         handle_key(&mut app, KeyCode::Char(' '));
         assert!(!app.paused);
@@ -164,7 +161,8 @@ mod tests {
     /// Verifies the action keys do not panic on a fresh app.
     #[test]
     fn action_keys_are_graceful() {
-        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default())
+            .expect("app construction succeeds");
         for code in [
             KeyCode::Char('i'),
             KeyCode::Char('s'),

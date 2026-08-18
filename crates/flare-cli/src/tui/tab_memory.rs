@@ -39,8 +39,18 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, info: &FrameInfo) {
     );
 
     let slab_lines = vec![
-        kv_row("hazard era", info.hazard_era.to_string(), "kv slots", info.kv_slots.to_string()),
-        kv_row("retired slots", info.hazard_retired.to_string(), "wal frames", info.sink_frames.to_string()),
+        kv_row(
+            "hazard era",
+            info.hazard_era.to_string(),
+            "kv slots",
+            info.kv_slots.to_string(),
+        ),
+        kv_row(
+            "retired slots",
+            info.hazard_retired.to_string(),
+            "wal frames",
+            info.sink_frames.to_string(),
+        ),
         Line::from(Span::styled(
             " slabs: 4 KiB chunks, 2-bit clock, fetch_or(1) refcount",
             Style::default().fg(Color::DarkGray),

@@ -350,8 +350,12 @@ impl TuiApp {
                 .add_modifier(Modifier::BOLD),
         ));
         frame.render_widget(
-            Paragraph::new(Line::from(spans))
-                .block(Block::default().borders(Borders::ALL).title(" FLARE ").border_style(Style::default().fg(theme.border))),
+            Paragraph::new(Line::from(spans)).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" FLARE ")
+                    .border_style(Style::default().fg(theme.border)),
+            ),
             area,
         );
     }
@@ -396,10 +400,7 @@ impl TuiApp {
 /// Returns the controls string for the footer, showing only global
 /// keys and keys relevant to the current tab.
 fn tab_controls(tab: usize) -> String {
-    let mut parts = vec![
-        "[1-5] tabs",
-        "[SPACE] pause",
-    ];
+    let mut parts = vec!["[1-5] tabs", "[SPACE] pause"];
     match tab {
         0 => parts.push("[I] burst"),
         2 => {

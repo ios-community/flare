@@ -36,8 +36,18 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, info: &FrameInfo) {
     );
 
     let sweep_lines = vec![
-        kv_row("prefix ops", info.snapshot.kv_ops.to_string(), "radix hits", info.snapshot.hits.to_string()),
-        kv_row("radix misses", info.snapshot.misses.to_string(), "clock evictions", info.snapshot.evictions.to_string()),
+        kv_row(
+            "prefix ops",
+            info.snapshot.kv_ops.to_string(),
+            "radix hits",
+            info.snapshot.hits.to_string(),
+        ),
+        kv_row(
+            "radix misses",
+            info.snapshot.misses.to_string(),
+            "clock evictions",
+            info.snapshot.evictions.to_string(),
+        ),
         Line::from(Span::styled(
             format!(" slot utilisation [{}]", bar(0.0, 40)),
             Style::default().fg(Color::DarkGray),

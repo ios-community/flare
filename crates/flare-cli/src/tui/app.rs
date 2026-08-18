@@ -620,7 +620,8 @@ mod tests {
     #[test]
     fn app_constructs_and_shuts_down() {
         // Use smaller arena for faster test execution on CI
-        let mut app = TuiApp::new(1 << 20, 0, true, 30, Config::default()).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 20, 0, true, 30, Config::default())
+            .expect("app construction succeeds");
         // Extended timeout for CI environments (5 minutes)
         let deadline = std::time::Instant::now() + std::time::Duration::from_mins(5);
         let mut snapshot = app.counters.snapshot();
@@ -641,7 +642,8 @@ mod tests {
     /// Verifies that the burst insert reports its inserted count.
     #[test]
     fn burst_insert_counts_work() {
-        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default())
+            .expect("app construction succeeds");
         let inserted = app.burst_insert(128);
         assert_eq!(inserted, 128);
         app.shutdown();
@@ -650,7 +652,8 @@ mod tests {
     /// Verifies that launching every chaos scenario stays usable.
     #[test]
     fn chaos_scenarios_launch_and_report() {
-        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
+        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default())
+            .expect("app construction succeeds");
         app.launch_storm();
         app.launch_pressure();
         let deadline = std::time::Instant::now() + std::time::Duration::from_mins(1);

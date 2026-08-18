@@ -301,7 +301,7 @@ impl SlabPool {
         })
     }
 
-/// Returns the total backing capacity of this pool in bytes.
+    /// Returns the total backing capacity of this pool in bytes.
     #[must_use]
     pub fn capacity_bytes(&self) -> usize {
         // SAFETY: the storage vector is allocated once at construction and never

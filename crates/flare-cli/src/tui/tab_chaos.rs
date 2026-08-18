@@ -23,9 +23,24 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, info: &FrameInfo) {
     let crash_status = scenario_status(info.crash_running, info.crash.is_some());
     let pressure_status = scenario_status(info.pressure_running, info.pressure.is_some());
 
-    lines.push(scenario_line("C", "contention storm (8 threads, 200k attempts, 16MB arena)", storm_status.0, storm_status.1));
-    lines.push(scenario_line("K", "crash fault injection (512 WAL frames, truncation replay)", crash_status.0, crash_status.1));
-    lines.push(scenario_line("M", "memory exhaustion (1MB arena + slab recycling)", pressure_status.0, pressure_status.1));
+    lines.push(scenario_line(
+        "C",
+        "contention storm (8 threads, 200k attempts, 16MB arena)",
+        storm_status.0,
+        storm_status.1,
+    ));
+    lines.push(scenario_line(
+        "K",
+        "crash fault injection (512 WAL frames, truncation replay)",
+        crash_status.0,
+        crash_status.1,
+    ));
+    lines.push(scenario_line(
+        "M",
+        "memory exhaustion (1MB arena + slab recycling)",
+        pressure_status.0,
+        pressure_status.1,
+    ));
     frame.render_widget(
         Paragraph::new(lines).block(
             Block::default()
@@ -99,10 +114,7 @@ fn scenario_line(key: &str, desc: &str, status: &str, color: Color) -> Line<'sta
             format!(" [{key}] {desc:<62}"),
             Style::default().fg(Color::Cyan),
         ),
-        Span::styled(
-            format!(" status: {status}"),
-            Style::default().fg(color),
-        ),
+        Span::styled(format!(" status: {status}"), Style::default().fg(color)),
     ])
 }
 

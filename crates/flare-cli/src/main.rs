@@ -144,8 +144,10 @@ fn main() {
             let man = Man::new(cmd);
             let out_dir = std::path::Path::new(&args.out_dir);
             std::fs::create_dir_all(out_dir).expect("create man dir");
-            man.render(&mut std::fs::File::create(out_dir.join("flare-cli.1")).expect("create man file"))
-                .expect("render man page");
+            man.render(
+                &mut std::fs::File::create(out_dir.join("flare-cli.1")).expect("create man file"),
+            )
+            .expect("render man page");
             0
         }
     };

@@ -90,25 +90,60 @@ fn gauge_block(label: String, fraction: f64) -> Paragraph<'static> {
 }
 
 /// Builds the counter lines for the dashboard body: 2-column grid with
-    /// aligned labels and values.
-    #[allow(clippy::cast_precision_loss)]
-    fn counter_lines(info: &FrameInfo) -> Vec<Line<'static>> {
-        let s = info.snapshot;
-        let hit_rate = if s.hits + s.misses == 0 {
-            0.0
-        } else {
-            s.hits as f64 / (s.hits + s.misses) as f64
-        };
-        vec![
-            kv_row("inserts/s", format!("{:.0}", info.rates[0]), "total inserts", s.inserts.to_string()),
-            kv_row("hits/s", format!("{:.0}", info.rates[1]), "total hits", s.hits.to_string()),
-            kv_row("misses/s", format!("{:.0}", info.rates[2]), "total misses", s.misses.to_string()),
-            kv_row("hit rate", percent(hit_rate), "contended CAS", s.contended.to_string()),
-            kv_row("vector ops", s.vector_ops.to_string(), "kv ops", s.kv_ops.to_string()),
-            kv_row("wal frames", s.wal_frames.to_string(), "errors", s.errors.to_string()),
-            kv_row("clock evictions", s.evictions.to_string(), "hazard era", format!("{} (ret {})", info.hazard_era, info.hazard_retired)),
-        ]
-    }
+/// aligned labels and values.
+#[allow(clippy::cast_precision_loss)]
+fn counter_lines(info: &FrameInfo) -> Vec<Line<'static>> {
+    let s = info.snapshot;
+    let hit_rate = if s.hits + s.misses == 0 {
+        0.0
+    } else {
+        s.hits as f64 / (s.hits + s.misses) as f64
+    };
+    vec![
+        kv_row(
+            "inserts/s",
+            format!("{:.0}", info.rates[0]),
+            "total inserts",
+            s.inserts.to_string(),
+        ),
+        kv_row(
+            "hits/s",
+            format!("{:.0}", info.rates[1]),
+            "total hits",
+            s.hits.to_string(),
+        ),
+        kv_row(
+            "misses/s",
+            format!("{:.0}", info.rates[2]),
+            "total misses",
+            s.misses.to_string(),
+        ),
+        kv_row(
+            "hit rate",
+            percent(hit_rate),
+            "contended CAS",
+            s.contended.to_string(),
+        ),
+        kv_row(
+            "vector ops",
+            s.vector_ops.to_string(),
+            "kv ops",
+            s.kv_ops.to_string(),
+        ),
+        kv_row(
+            "wal frames",
+            s.wal_frames.to_string(),
+            "errors",
+            s.errors.to_string(),
+        ),
+        kv_row(
+            "clock evictions",
+            s.evictions.to_string(),
+            "hazard era",
+            format!("{} (ret {})", info.hazard_era, info.hazard_retired),
+        ),
+    ]
+}
 
 /// Formats a key-value pair as a grid row with two aligned columns.
 #[allow(clippy::needless_pass_by_value)]

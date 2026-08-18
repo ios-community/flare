@@ -24,36 +24,36 @@ use core::sync::atomic::{AtomicU64, Ordering};
 const ERA_ADVANCED: u64 = u64::MAX;
 
 /// Manages the global era and thread-local era registrations.
-    ///
-    /// The manager owns a fixed-capacity registration table; threads acquire a
-    /// [`EraGuard`] handle, refresh their era while traversing, and release
-    /// the slot on drop. Retired objects are queued with the era at which they
-    /// were retired, and reclaimed once all active registrations exceed that
-    /// era.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use flare_core::sync::hazard::HazardManager;
-    /// let manager = HazardManager::new();
-    /// let guard = manager.register().expect("free slot");
-    /// let era = manager.advance_era();
-    /// assert!(guard.era() <= era);
-    /// drop(guard);
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// Creating a manager and advancing the era:
-    ///
-    /// ```
-    /// # use flare_core::sync::hazard::HazardManager;
-    /// let manager = HazardManager::new();
-    /// assert_eq!(manager.current_era(), 0);
-    /// let era = manager.advance_era();
-    /// assert_eq!(era, 1);
-    /// ```
-    pub struct HazardManager {
+///
+/// The manager owns a fixed-capacity registration table; threads acquire a
+/// [`EraGuard`] handle, refresh their era while traversing, and release
+/// the slot on drop. Retired objects are queued with the era at which they
+/// were retired, and reclaimed once all active registrations exceed that
+/// era.
+///
+/// # Examples
+///
+/// ```
+/// # use flare_core::sync::hazard::HazardManager;
+/// let manager = HazardManager::new();
+/// let guard = manager.register().expect("free slot");
+/// let era = manager.advance_era();
+/// assert!(guard.era() <= era);
+/// drop(guard);
+/// ```
+///
+/// # Examples
+///
+/// Creating a manager and advancing the era:
+///
+/// ```
+/// # use flare_core::sync::hazard::HazardManager;
+/// let manager = HazardManager::new();
+/// assert_eq!(manager.current_era(), 0);
+/// let era = manager.advance_era();
+/// assert_eq!(era, 1);
+/// ```
+pub struct HazardManager {
     global_era: AtomicU64,
     slots: UnsafeCell<Vec<Slot>>,
     retired: UnsafeCell<Vec<RetiredEntry>>,
