@@ -27,6 +27,14 @@ const PINNED_ALIGN: usize = 64;
 ///
 /// Returns [`FlareError::AllocationFailed`] when the request is zero-sized
 /// or the global allocator cannot back it.
+///
+/// # Safety
+///
+/// The returned pointer is valid for `size_bytes` bytes of read/write
+/// access. The caller must not call `deallocate_pinned_block` on the
+/// same pointer with a different size, must not double-free, and must
+/// ensure no concurrent access from other threads or devices. The
+/// allocation is zeroed by the allocator.
 pub fn allocate_pinned_block(size_bytes: usize) -> Result<*mut u8, FlareError> {
     if size_bytes == 0 {
         return Err(FlareError::AllocationFailed);

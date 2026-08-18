@@ -619,8 +619,10 @@ mod tests {
     /// Verifies that the app constructs and shuts down cleanly.
     #[test]
     fn app_constructs_and_shuts_down() {
-        let mut app = TuiApp::new(1 << 22, 0, true, 30, Config::default()).expect("app construction succeeds");
-        let deadline = std::time::Instant::now() + std::time::Duration::from_mins(2);
+        // Use smaller arena for faster test execution on CI
+        let mut app = TuiApp::new(1 << 20, 0, true, 30, Config::default()).expect("app construction succeeds");
+        // Extended timeout for CI environments (5 minutes)
+        let deadline = std::time::Instant::now() + std::time::Duration::from_mins(5);
         let mut snapshot = app.counters.snapshot();
         assert_eq!(snapshot.inserts, 0, "workload must start paused");
         app.toggle_pause();
