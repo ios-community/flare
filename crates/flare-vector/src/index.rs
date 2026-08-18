@@ -1171,4 +1171,54 @@ mod tests {
         let hits = index.search(&[10.0; DIM], 20).expect("search succeeds");
         assert_eq!(hits.len(), 20);
     }
+
+    /// Verifies the configuration getters report the construction inputs.
+    #[test]
+    fn configuration_getters() {
+        let index = index(5);
+        assert_eq!(index.dimension(), DIM);
+        assert_eq!(index.sub_vectors(), SUBS);
+        assert_eq!(index.n_centroids(), CENTROIDS);
+    }
+
+    /// Verifies train rejects an empty set and a set smaller than the
+    /// centroid count.
+    #[test]
+    fn train_rejects_empty_and_undersized_sets() {
+        let index = index(5);
+        assert!(matches!(
+            index.train(&[]),
+            Err(FlareError::InvalidParameter {
+                reason: "training set is empty"
+            })
+        ));
+        assert!(matches!(
+            index.train(&[1.0; DIM]),
+            Err(FlareError::InvalidParameter {
+                reason: "training set smaller than centroid count"
+            })
+        ));
+        assert!(!index.is_trained());
+    }
+
+    /// Verifies that re-clustering retries until the journal grows past
+    /// the codebook training minimum.
+    #[test]
+    fn recluster_retries_until_journal_is_ready() {
+        let index = index(9);
+        index.train(&training_samples()).expect("training succeeds");
+        for i in 0..255 {
+            let v = 10.0 + (i % 5) as f32;
+            index.insert(&[v, v, v, v]).expect("insert succeeds");
+        }
+        assert!(
+            index.trigger_shadow_reclustering().is_err(),
+            "journal below the codebook minimum fails"
+        );
+        index.insert(&[10.0; DIM]).expect("insert succeeds");
+        index
+            .trigger_shadow_reclustering()
+            .expect("succeeds once the journal holds 256 rows");
+        assert_eq!(index.vector_count().expect("count succeeds"), 256);
+    }
 }

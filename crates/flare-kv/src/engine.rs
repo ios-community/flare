@@ -619,6 +619,13 @@ mod tests {
         }
     }
 
+    /// Verifies the capacity getter reports the configured size.
+    #[test]
+    fn capacity_getter_reports_configured_size() {
+        let engine = engine(8192);
+        assert_eq!(engine.capacity_bytes(), 8192);
+    }
+
     /// Verifies that a match resurrects a swept (ref-count zero) slot.
     ///
     /// The insert leaves the clock at `LIVE|1`; the first sweep decrements

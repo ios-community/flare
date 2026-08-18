@@ -1,0 +1,28 @@
+[package]
+name = "flare-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Interactive workbench for FLARE: real-time TUI dashboard, engineering REPL shell, and chaos stress-testing arena."
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+flare-core = { path = "../flare-core", version = "0.1.0" }
+flare-vector = { path = "../flare-vector", version = "0.1.0" }
+flare-kv = { path = "../flare-kv", version = "0.1.0" }
+clap = { version = "4.6", features = ["derive"] }
+clap_complete = "4.6"
+clap_mangen = "0.2"
+nu-ansi-term = "0.50"
+ratatui = "0.30"
+reedline = "0.50"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+dirs = "5.0"

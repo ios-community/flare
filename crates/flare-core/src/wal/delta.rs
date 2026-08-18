@@ -100,6 +100,18 @@ impl WalFrame {
     }
 
     /// Creates a frame that records an allocation.
+    ///
+    /// The payload is empty; the region length is encoded in the payload
+    /// bytes (big-endian `u32`) for use by the recovery path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::wal::{WalFrame, WalOpCode};
+    /// let frame = WalFrame::alloc(0x10, 48);
+    /// assert_eq!(frame.opcode, WalOpCode::Alloc);
+    /// assert_eq!(frame.offset, 0x10);
+    /// ```
     #[must_use]
     pub fn alloc(offset: u64, length: usize) -> Self {
         Self {
@@ -111,6 +123,18 @@ impl WalFrame {
     }
 
     /// Creates a frame that records a retirement.
+    ///
+    /// The payload is empty; the region length is encoded in the payload
+    /// bytes (big-endian `u32`) for use by the recovery path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::wal::{WalFrame, WalOpCode};
+    /// let frame = WalFrame::free(0x10, 48);
+    /// assert_eq!(frame.opcode, WalOpCode::Free);
+    /// assert_eq!(frame.offset, 0x10);
+    /// ```
     #[must_use]
     pub fn free(offset: u64, length: usize) -> Self {
         Self {
@@ -287,6 +311,8 @@ pub struct WalBatch {
 
 impl WalBatch {
     /// Creates an empty batch.
+    ///
+    /// The batch starts with no frames and can be built up with [`Self::push`].
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -336,6 +362,8 @@ pub struct MemoryWalSink {
 
 impl MemoryWalSink {
     /// Creates an empty memory sink.
+    ///
+    /// The sink starts with an empty log buffer and zero frame count.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -354,6 +382,19 @@ impl MemoryWalSink {
     }
 
     /// Returns the total encoded bytes stored so far.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::wal::{MemoryWalSink, WalFrame};
+    /// let sink = MemoryWalSink::new();
+    /// assert_eq!(sink.len(), 0);
+    /// let frame = WalFrame::update(0, vec![1, 2, 3]);
+    /// // SAFETY: frame is small and within limits.
+    /// let bytes = frame.encode().unwrap();
+    /// // In practice this would go through commit, but for demo:
+    /// assert_eq!(sink.len(), 0);
+    /// ```
     #[must_use]
     pub fn len(&self) -> usize {
         self.acquire();
@@ -365,18 +406,47 @@ impl MemoryWalSink {
     }
 
     /// Returns whether the log is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::wal::MemoryWalSink;
+    /// let sink = MemoryWalSink::new();
+    /// assert!(sink.is_empty());
+    /// ```
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Returns the number of frames flushed so far.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::wal::MemoryWalSink;
+    /// let sink = MemoryWalSink::new();
+    /// assert_eq!(sink.frame_count(), 0);
+    /// ```
     #[must_use]
     pub fn frame_count(&self) -> u64 {
         self.frames.load(Ordering::Relaxed)
     }
 
     /// Returns a snapshot of the log buffer.
+    ///
+    /// The returned vector is a clone of the internal buffer at the time
+    /// of the call. The snapshot can be replayed to recover the arena
+    /// state at this point in time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::wal::MemoryWalSink;
+    /// let sink = MemoryWalSink::new();
+    /// let snapshot = sink.snapshot();
+    /// assert!(snapshot.is_empty());
+    /// ```
     #[must_use]
     pub fn snapshot(&self) -> Vec<u8> {
         self.acquire();
@@ -424,6 +494,9 @@ pub struct WalTransaction {
 impl Default for WalTransaction {
     /// Creates an empty transaction whose parent frame addresses a
     /// zero-length update at offset 0.
+    ///
+    /// The default transaction has no children and a no-op parent frame.
+    /// Committing it is a no-op.
     fn default() -> Self {
         Self {
             children: Vec::new(),
@@ -662,5 +735,35 @@ mod tests {
         let sink = MemoryWalSink::new();
         tx.commit(&sink).expect("empty commit succeeds");
         assert!(sink.is_empty());
+    }
+
+    /// Verifies that concurrent commits are serialised by the sink lock and
+    /// every batch lands in the log.
+    #[test]
+    fn concurrent_commits_are_serialised() {
+        use alloc_crate::vec::Vec;
+        use std::sync::{Arc, Barrier};
+        let sink = Arc::new(MemoryWalSink::new());
+        let barrier = Arc::new(Barrier::new(5));
+        let mut threads = Vec::new();
+        for _ in 0..4 {
+            let sink = Arc::clone(&sink);
+            let barrier = Arc::clone(&barrier);
+            threads.push(std::thread::spawn(move || {
+                barrier.wait();
+                for i in 0..64u64 {
+                    let tx = WalTransaction::new(
+                        vec![WalFrame::alloc(i * 64, 48)],
+                        WalFrame::update(i * 64, vec![0xAA]),
+                    );
+                    tx.commit(&*sink).expect("commit succeeds");
+                }
+            }));
+        }
+        barrier.wait();
+        for thread in threads {
+            thread.join().expect("worker finishes");
+        }
+        assert_eq!(sink.frame_count(), 256, "every batch is flushed once");
     }
 }

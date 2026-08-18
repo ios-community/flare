@@ -41,6 +41,15 @@ pub trait GpuSyncDriver: Send + Sync {
     ///
     /// Returns a driver-specific error when the GPU runtime fails to
     /// enqueue the fence.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::gpu::CpuFallbackDriver;
+    /// # use flare_core::sync::gpu::GpuSyncDriver;
+    /// let driver = CpuFallbackDriver::default();
+    /// driver.publish_epoch_fence(7).expect("fence succeeds");
+    /// ```
     fn publish_epoch_fence(&self, epoch_id: u64) -> Result<(), FlareError>;
 
     /// Allocates host memory with zero-copy mapping properties.
@@ -54,6 +63,17 @@ pub trait GpuSyncDriver: Send + Sync {
     ///
     /// Returns [`FlareError::AllocationFailed`] on exhaustion, or a
     /// driver-specific error when the GPU runtime rejects the request.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::gpu::CpuFallbackDriver;
+    /// # use flare_core::sync::gpu::GpuSyncDriver;
+    /// let driver = CpuFallbackDriver::default();
+    /// let ptr = driver.allocate_pinned_arena(1024).expect("allocation succeeds");
+    /// // SAFETY: the pointer belongs to `driver` and is not used concurrently.
+    /// unsafe { driver.deallocate_pinned_arena(ptr, 1024).expect("deallocation succeeds") };
+    /// ```
     fn allocate_pinned_arena(&self, size_bytes: usize) -> Result<*mut u8, FlareError>;
 
     /// Deallocates host pinned memory previously allocated with
@@ -112,6 +132,17 @@ impl CpuFallbackDriver {
     /// Returns the epoch identifier of the most recent published fence.
     ///
     /// Returns `u64::MAX` when no fence has been published yet.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::gpu::CpuFallbackDriver;
+    /// # use flare_core::sync::gpu::GpuSyncDriver;
+    /// let driver = CpuFallbackDriver::default();
+    /// assert_eq!(driver.last_epoch(), u64::MAX);
+    /// driver.publish_epoch_fence(7).expect("fence succeeds");
+    /// assert_eq!(driver.last_epoch(), 7);
+    /// ```
     #[must_use]
     pub fn last_epoch(&self) -> u64 {
         self.last_epoch.load(Ordering::Relaxed)
@@ -121,6 +152,20 @@ impl CpuFallbackDriver {
     ///
     /// This is a diagnostic helper; allocation and deallocation run
     /// lock-free, so the count may drift while the pool is in use.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::gpu::CpuFallbackDriver;
+    /// # use flare_core::sync::gpu::GpuSyncDriver;
+    /// let driver = CpuFallbackDriver::default();
+    /// assert_eq!(driver.pinned_count(), 0);
+    /// let ptr = driver.allocate_pinned_arena(1024).expect("allocation succeeds");
+    /// assert_eq!(driver.pinned_count(), 1);
+    /// // SAFETY: the pointer belongs to `driver` and is not used concurrently.
+    /// unsafe { driver.deallocate_pinned_arena(ptr, 1024).expect("deallocation succeeds") };
+    /// assert_eq!(driver.pinned_count(), 0);
+    /// ```
     #[must_use]
     pub fn pinned_count(&self) -> usize {
         self.slots

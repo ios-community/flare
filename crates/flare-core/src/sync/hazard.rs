@@ -24,24 +24,36 @@ use core::sync::atomic::{AtomicU64, Ordering};
 const ERA_ADVANCED: u64 = u64::MAX;
 
 /// Manages the global era and thread-local era registrations.
-///
-/// The manager owns a fixed-capacity registration table; threads acquire a
-/// [`EraGuard`] handle, refresh their era while traversing, and release
-/// the slot on drop. Retired objects are queued with the era at which they
-/// were retired, and reclaimed once all active registrations exceed that
-/// era.
-///
-/// # Examples
-///
-/// ```
-/// # use flare_core::sync::hazard::HazardManager;
-/// let manager = HazardManager::new();
-/// let guard = manager.register().expect("free slot");
-/// let era = manager.advance_era();
-/// assert!(guard.era() <= era);
-/// drop(guard);
-/// ```
-pub struct HazardManager {
+    ///
+    /// The manager owns a fixed-capacity registration table; threads acquire a
+    /// [`EraGuard`] handle, refresh their era while traversing, and release
+    /// the slot on drop. Retired objects are queued with the era at which they
+    /// were retired, and reclaimed once all active registrations exceed that
+    /// era.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::hazard::HazardManager;
+    /// let manager = HazardManager::new();
+    /// let guard = manager.register().expect("free slot");
+    /// let era = manager.advance_era();
+    /// assert!(guard.era() <= era);
+    /// drop(guard);
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// Creating a manager and advancing the era:
+    ///
+    /// ```
+    /// # use flare_core::sync::hazard::HazardManager;
+    /// let manager = HazardManager::new();
+    /// assert_eq!(manager.current_era(), 0);
+    /// let era = manager.advance_era();
+    /// assert_eq!(era, 1);
+    /// ```
+    pub struct HazardManager {
     global_era: AtomicU64,
     slots: UnsafeCell<Vec<Slot>>,
     retired: UnsafeCell<Vec<RetiredEntry>>,
@@ -65,6 +77,8 @@ struct RetiredEntry {
 
 impl HazardManager {
     /// Creates a hazard manager with an empty era counter.
+    ///
+    /// The manager starts with global era 0 and no registered threads.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -80,13 +94,16 @@ impl HazardManager {
     /// very next global advance makes the holder eligible for reclamation
     /// unless it refreshes first.
     ///
+    /// Returns `None` if the internal slot table is full (unlikely in
+    /// normal operation).
+    ///
     /// # Examples
     ///
     /// ```
     /// # use flare_core::sync::hazard::HazardManager;
     /// let manager = HazardManager::new();
     /// let guard = manager.register().expect("slot available");
-    /// assert_eq!(guard.era(), HazardManager::current_era(&manager));
+    /// assert_eq!(guard.era(), manager.current_era());
     /// ```
     #[must_use]
     pub fn register(&self) -> Option<EraGuard<'_>> {
@@ -114,6 +131,10 @@ impl HazardManager {
     }
 
     /// Returns the current global era ($`E_g`$).
+    ///
+    /// The era is a monotonically increasing counter that advances when
+    /// [`Self::advance_era`] is called. Readers use this to track their
+    /// traversal epoch.
     #[must_use]
     pub fn current_era(&self) -> u64 {
         self.global_era.load(Ordering::Acquire)
@@ -123,6 +144,15 @@ impl HazardManager {
     ///
     /// Each advance makes every retired object whose era is below the new
     /// global era eligible for reclamation once active guards advance.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::hazard::HazardManager;
+    /// let manager = HazardManager::new();
+    /// assert_eq!(manager.advance_era(), 1);
+    /// assert_eq!(manager.advance_era(), 2);
+    /// ```
     #[must_use]
     pub fn advance_era(&self) -> u64 {
         self.global_era.fetch_add(1, Ordering::AcqRel) + 1
@@ -166,6 +196,16 @@ impl HazardManager {
     ///
     /// Panics when the retired queue cannot be written, which is
     /// impossible under the internal allocation guarantee.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::hazard::HazardManager;
+    /// let manager = HazardManager::new();
+    /// manager.retire();
+    /// manager.retire();
+    /// assert_eq!(manager.retired_len(), 2);
+    /// ```
     pub fn retire(&self) {
         let era = self.global_era.load(Ordering::Acquire);
         // SAFETY: the retired queue is only ever touched by the retiring
@@ -224,6 +264,16 @@ impl HazardManager {
     }
 
     /// Returns the number of entries queued for reclamation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::hazard::HazardManager;
+    /// let manager = HazardManager::new();
+    /// assert_eq!(manager.retired_len(), 0);
+    /// manager.retire();
+    /// assert_eq!(manager.retired_len(), 1);
+    /// ```
     #[must_use]
     pub fn retired_len(&self) -> usize {
         // SAFETY: read of the queue length is data-race free under the
@@ -267,12 +317,30 @@ pub struct EraGuard<'a> {
 
 impl EraGuard<'_> {
     /// Returns the era the guard currently holds.
+    ///
+    /// This is the global era value that was active when the guard was
+    /// created or last refreshed.
     #[must_use]
     pub fn era(&self) -> u64 {
         self.manager.current_era_slot(self.index)
     }
 
     /// Refreshes the guard's era to the current global era.
+    ///
+    /// This must be called before starting a new traversal to ensure the
+    /// guard's era reflects the latest global epoch.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use flare_core::sync::hazard::HazardManager;
+    /// let manager = HazardManager::new();
+    /// let guard = manager.register().expect("slot available");
+    /// manager.advance_era();
+    /// assert_ne!(guard.era(), manager.current_era());
+    /// guard.refresh();
+    /// assert_eq!(guard.era(), manager.current_era());
+    /// ```
     pub fn refresh(&self) {
         self.manager.refresh(self.index);
     }
@@ -280,6 +348,9 @@ impl EraGuard<'_> {
 
 impl Drop for EraGuard<'_> {
     /// Releases the registration slot on drop.
+    ///
+    /// The slot is marked as inactive and its era is set to `ERA_ADVANCED`,
+    /// making it available for reuse by a new guard.
     fn drop(&mut self) {
         self.manager.release(self.index);
     }

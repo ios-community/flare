@@ -187,6 +187,14 @@ impl ClassState {
     /// freelist.
     ///
     /// Returns `false` when the chunk budget is exhausted.
+    ///
+    /// # Safety
+    ///
+    /// The function uses unsafe code to write the freelist linkage table
+    /// entries before publishing them via CAS. The `global` index is
+    /// bounded by the table length established at construction. The CAS
+    /// protocol ensures that only the thread that successfully publishes a
+    /// slot can observe its linkage entry.
     fn provision(&self) -> bool {
         loop {
             let chunk = self.chunk_count.load(Ordering::Relaxed);
@@ -293,11 +301,14 @@ impl SlabPool {
         })
     }
 
-    /// Returns the total backing capacity of this pool in bytes.
+/// Returns the total backing capacity of this pool in bytes.
     #[must_use]
     pub fn capacity_bytes(&self) -> usize {
-        // SAFETY: the storage length is fixed at construction and never
-        // reallocated; reading the length is data-race free.
+        // SAFETY: the storage vector is allocated once at construction and never
+        // reallocated or moved. The `UnsafeCell` only permits interior
+        // mutation through the pool's controlled APIs; the length field
+        // itself is immutable after construction, so reading it is data-race
+        // free.
         unsafe { (*self.storage.get()).len() }
     }
 
@@ -316,6 +327,14 @@ impl SlabPool {
     ///
     /// Panics when `kind` maps to an unknown class discriminant, which
     /// cannot happen for the node types accepted by this method.
+    ///
+    /// # Safety
+    ///
+    /// The function uses unsafe code to read the freelist linkage table.
+    /// The `head` index is validated to be within the table bounds by the
+    /// provision logic, and the CAS protocol ensures that only a thread
+    /// that successfully publishes a slot can observe its linkage entry.
+    /// The returned slot is exclusively owned by the caller until freed.
     ///
     /// # Examples
     ///
@@ -372,6 +391,16 @@ impl SlabPool {
     /// Panics when `slot.offset` falls outside the class chunk budget,
     /// which indicates a lifecycle violation (double free or foreign
     /// slot).
+    ///
+    /// # Safety
+    ///
+    /// The function uses unsafe code to write the freelist linkage table
+    /// entry before publishing the slot via CAS. The `global` index is
+    /// validated to be within the class budget before the write. The CAS
+    /// protocol ensures that only the thread that successfully publishes
+    /// the slot can observe its linkage entry. The slot payload is not
+    /// cleared; the next owner must re-initialise it before publishing
+    /// any node referencing the slot.
     ///
     /// # Examples
     ///

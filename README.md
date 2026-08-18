@@ -9,7 +9,7 @@ A lock-free, arena-resident storage engine written from scratch in Rust. FLARE u
 
 ## Overview
 
-FLARE is a multi-crate Cargo workspace. `flare-core` provides the memory, pointer, tree, concurrency, and persistence primitives (`#![no_std]` + alloc, zero external dependencies); `flare-vector` and `flare-kv` build the IVF-PQ search engine and the radix attention KV-cache engine on top of it; `flare-ffi` exports the whole system over a C ABI with an optional CUDA synchronization driver.
+FLARE is a multi-crate Cargo workspace. `flare-core` provides the memory, pointer, tree, concurrency, and persistence primitives (`#![no_std]` + alloc, zero external dependencies); `flare-vector` and `flare-kv` build the IVF-PQ search engine and the radix attention KV-cache engine on top of it; `flare-ffi` exports the whole system over a C ABI with an optional CUDA synchronization driver; `flare-cli` ships an interactive shell (TUI dashboard, REPL, and a headless chaos arena) for exercising and observing every engine live.
 
 The read path is lock-free: every tree mutation is published with a single 64-bit atomic Compare-And-Swap, and retired slab slots are reclaimed through Hazard Eras so readers are never blocked.
 
@@ -42,6 +42,7 @@ The read path is lock-free: every tree mutation is published with a single 64-bi
 | `flare-vector` | IVF-PQ index, k-means training, codebooks, SIMD ADC distance kernels. | `flare-core` |
 | `flare-kv` | Radix attention engine: prefix sharing, 2-bit slab clock eviction. | `flare-core` |
 | `flare-ffi` | C ABI exports (generated `include/flare.h` via cbindgen) + optional `CudaSyncDriver`. | all |
+| `flare-cli` | Interactive shell: TUI dashboard (`flare-cli tui`), 14-command REPL (`flare-cli repl`), headless chaos arena (`flare-cli chaos`). `publish = false`. | all |
 | `flare-bench` | Criterion benchmarks (1D lookups, IVF-PQ search, radix attention TTFT). `publish = false`. | all |
 
 The full design is specified in [`spec/`](spec/requirements.md) (requirements), [`spec/design.md`](spec/design.md) (design), and [`spec/tasks.md`](spec/tasks.md) (validation sequence & rollout checklist).
@@ -136,7 +137,7 @@ The full validation sequence (tests, coverage, rustdoc, clippy, fmt) is document
 cargo check --workspace --all-targets
 cargo check --package flare-core --no-default-features   # no_std compliance
 cargo test --workspace --all-features
-cargo llvm-cov --workspace --all-features --exclude flare-ffi --fail-under-lines 95
+cargo llvm-cov --workspace --all-features --exclude flare-ffi --exclude flare-cli --fail-under-lines 95
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo fmt --check

@@ -5,6 +5,7 @@ members = [
     "crates/flare-vector",
     "crates/flare-kv",
     "crates/flare-ffi",
+    "crates/flare-cli",
     "crates/flare-bench",
 ]
 
