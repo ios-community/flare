@@ -116,7 +116,7 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Build Documentation
+- name: Build Documentation
         run: |
           RUSTDOCFLAGS="-D warnings" \
           cargo doc --workspace --all-features --no-deps
@@ -130,45 +130,16 @@ jobs:
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>FLARE Documentation</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
-              h1 { color: #1a1a2e; border-bottom: 2px solid #e63946; padding-bottom: 0.5rem; }
-              .crate-list { display: grid; gap: 1rem; }
-              .crate-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.5rem; transition: box-shadow 0.2s; }
-              .crate-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-              .crate-name { font-size: 1.25rem; font-weight: 600; color: #1a1a2e; text-decoration: none; }
-              .crate-name:hover { color: #e63946; }
-              .crate-desc { color: #555; margin-top: 0.5rem; }
-              .crate-link { display: inline-block; margin-top: 0.5rem; color: #e63946; text-decoration: none; font-weight: 500; }
-              .crate-link:hover { text-decoration: underline; }
-              .version { color: #888; font-size: 0.875rem; }
-            </style>
           </head>
           <body>
             <h1>FLARE Documentation</h1>
-            <p>Lock-free arena/radix engine for 1D KV, IVF-PQ vector search, and LLM KV-cache.</            <div class="crate-list">
-              <a class="crate-card" href="flare_core/index.html">
-                <div class="crate-name">flare-core <span class="version">0.1.0</span></div>
-                <div class="crate-desc">Core primitives: flat memory arenas, slab pools, tagged pointers, adaptive radix nodes, hazard eras, delta WAL, and GPU synchronisation.</              </a>
-              <a class="crate-card" href="flare_vector/index.html">
-                <div class="crate-name">flare-vector <span class="version">0.1.0</span></div>
-                <div class="crate-desc">High-dimensional vector search: IVF-PQ index, k-means training, codebooks, SIMD ADC distance kernels.</              </a>
-              <a class="crate-card" href="flare_kv/index.html">
-                <div class="crate-name">flare-kv <span class="version">0.1.0</span></div>
-                <div class="crate-desc">Radix attention engine: prefix matching, 2-bit clock eviction, lock-free reads.</div>
-                <span class="crate-link">View docs →</span>
-              </a>
-              <a class="crate-card" href="flare_ffi/index.html">
-                <div class="crate-name">flare-ffi <span class="version">0.1.0</span></div>
-                <div class="crate-desc">C ABI exports over opaque handles with cbindgen-generated header; optional CUDA driver.</div>
-                <span class="crate-link">View docs →</span>
-              </a>
-              <a class="crate-card" href="flare/index.html">
-                <div class="crate-name">flare-cli <span class="version">0.1.0</span></div>
-                <div class="crate-desc">Interactive shell: TUI dashboard, REPL, and chaos arena.</div>
-                <span class="crate-link">View docs →</span>
-              </a>
-            </div>
+            <p>Lock-free arena/radix engine for 1D KV, IVF-PQ vector search, and LLM KV-cache.</            <ul>
+              <li><a href="flare_core/index.html">flare-core</a> - Core primitives: flat memory arenas, slab pools, tagged pointers, adaptive radix nodes, hazard eras, delta WAL, and GPU synchronisation.
+              <li><a href="flare_vector/index.html">flare-vector</a> - High-dimensional vector search: IVF-PQ index, k-means training, codebooks, SIMD ADC distance kernels.
+              <li><a href="flare_kv/index.html">flare-kv</a> - Radix attention engine: prefix matching, 2-bit clock eviction, lock-free reads.
+              <li><a href="flare_ffi/index.html">flare-ffi</a> - C ABI exports over opaque handles with cbindgen-generated header; optional CUDA driver.
+              <li><a href="flare/index.html">flare-cli</a> - Interactive shell: TUI dashboard, REPL, and chaos arena.
+            </ul>
           </body>
           </html>
           EOF
