@@ -25,8 +25,16 @@ radix attention engine with longest-common-prefix matching DAG and lock-free 2-b
 C ABI exports over opaque handles with cbindgen-generated `include/flare.h`, plus optional `CudaSyncDriver` (feature `cuda`) with dynamic runtime loading.
 - `flare-bench` \
 Criterion benchmarks for 1D radix lookups, IVF-PQ vector search, and radix attention TTFT.
-- Workspace quality gates: pedantic + nursery clippy denied, zero-warning rustdoc, `missing_docs` enforced, and line coverage $\ge 95\%$ (96.66% excluding the untestable CUDA driver path).
+- `flare-cli` \
+Interactive shell (`publish = false`): a `ratatui` TUI dashboard (`tui`) streaming live counters over three tabs (tree / vector / KV-cache), a reedline REPL (`repl`) with 14 commands covering every engine API, and a headless chaos arena (`chaos`) with multi-threaded insert storms, memory-pressure sweeps, and crash injection.
+- Workspace quality gates: pedantic + nursery clippy denied, zero-warning rustdoc, `missing_docs` enforced, and line coverage $\ge 95\%$ (95.38% excluding the untestable CUDA driver and flare-cli TUI glue paths).
 - Multi-threaded CAS stress tests (including `concurrent_inserts_are_all_present`), fault-injection crash-recovery tests, and synthetic-data benchmark suites.
+
+### Fixed
+- TUI workload now starts paused: the dashboard opens idle and only grows data after the user presses `SPACE`.
+- TUI tab labels are numbered 1-5 (keys 1-5 select them); the header no longer shows 0-4.
+- REPL prompt renders a single `flare> ` (reedline's built-in `> ` indicator suppressed) and command output starts on its own line.
+- Chaos storm audit only verifies the key range the workers actually wrote, eliminating spurious "lost updates" reports when the keyspace exceeds the per-thread attempt budget.
 
 ### Known Blockers (publication)
 - Crate name `flare-core` is taken on crates.io by an unrelated QUIC project; packaging verified with `--no-verify`, real publication requires a crate rename (decision pending).

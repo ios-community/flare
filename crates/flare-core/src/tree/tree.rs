@@ -1625,4 +1625,147 @@ mod tests {
             Err(crate::error::FlareError::ArenaBoundsExceeded { .. })
         ));
     }
+
+    /// Verifies that a tombstone root reads as empty on every read path
+    /// and that insert replaces it in place without a stale value.
+    #[test]
+    fn tombstone_root_reads_as_empty_and_replaces() {
+        let tree = test_tree();
+        tree.insert(b"ab", 1).expect("insert succeeds");
+        let tombstone = TaggedPointer::pack_inline_payload(1, true).to_bits();
+        tree.root.store(tombstone, Ordering::Release);
+        assert_eq!(tree.get(b"ab").expect("lookup succeeds"), None);
+        assert_eq!(tree.longest_prefix(b"ab").expect("walk succeeds"), None);
+        assert_eq!(
+            tree.insert(b"cd", 2).expect("insert succeeds"),
+            None,
+            "tombstone root is replaced without a stale previous value"
+        );
+        assert_eq!(tree.get(b"cd").expect("lookup succeeds"), Some(2));
+    }
+
+    /// Verifies longest-prefix resolution against a leaf root: the empty
+    /// key resolves, any other key misses.
+    #[test]
+    fn leaf_root_longest_prefix() {
+        let tree = test_tree();
+        let leaf = TaggedPointer::pack_inline_payload(5, false);
+        tree.root.store(leaf.to_bits(), Ordering::Release);
+        assert_eq!(
+            tree.longest_prefix(b"").expect("walk succeeds"),
+            Some((0, 5))
+        );
+        assert_eq!(tree.longest_prefix(b"ab").expect("walk succeeds"), None);
+    }
+
+    /// Verifies that deleting the empty key from a leaf root empties the
+    /// tree entirely.
+    #[test]
+    fn leaf_root_delete_empties_tree() {
+        let tree = test_tree();
+        let leaf = TaggedPointer::pack_inline_payload(5, false);
+        tree.root.store(leaf.to_bits(), Ordering::Release);
+        assert!(tree.delete(b"").expect("delete succeeds"));
+        assert_eq!(tree.get(b"").expect("lookup succeeds"), None);
+        assert!(!tree.delete(b"").expect("delete succeeds"));
+    }
+
+    /// Verifies that a tombstone child terminates a longest-prefix walk
+    /// with the best match seen so far.
+    #[test]
+    fn longest_prefix_stops_at_tombstone_child() {
+        let tree = test_tree();
+        tree.insert(b"ab", 1).expect("insert succeeds");
+        tree.insert(b"cb", 2).expect("insert succeeds");
+        let root = tree.root_tag();
+        let level2_bits = tree.lookup_child(root, 6).expect("child").expect("present");
+        let level2 = TaggedPointer::from_bits(level2_bits);
+        let node = tree.node4(level2).expect("node4 readable");
+        let tombstone = TaggedPointer::pack_inline_payload(1, true).to_bits();
+        node.children()[0].store(tombstone, Ordering::Relaxed);
+        assert_eq!(
+            tree.longest_prefix(b"ab").expect("walk succeeds"),
+            None,
+            "walk stops at the tombstoned child"
+        );
+        assert_eq!(
+            tree.longest_prefix(b"cb").expect("walk succeeds"),
+            Some((2, 2)),
+            "sibling branch is unaffected"
+        );
+    }
+
+    /// Verifies the `Node64` → `Node256` cascade once the bitmap is full.
+    ///
+    /// A `Node64` with sixteen children covers every nibble, so the growth
+    /// branch is only reachable with a synthetic bitmap that keeps one
+    /// nibble free while counting sixteen bits.
+    #[test]
+    fn node64_grows_to_node256_beyond_sixteen_children() {
+        let tree = test_tree();
+        let mut children = [EMPTY_CHILD; 64];
+        let mut bitmap = 0u64;
+        for i in 0..15u8 {
+            children[usize::from(i)] = tree.make_leaf(200 + u64::from(i)).expect("leaf").to_bits();
+            bitmap |= 1u64 << u64::from(i);
+        }
+        bitmap |= 1u64 << 16;
+        let tag = tree
+            .build_node64(
+                bitmap,
+                &children,
+                tree.make_leaf(7).expect("leaf").to_bits(),
+                3,
+            )
+            .expect("node64 builds");
+        assert_eq!(tag.node_type(), NodeType::Node64);
+        let extra = tree.make_leaf(77).expect("leaf");
+        let grown = tree.store_child(tag, 15, extra).expect("growth succeeds");
+        assert_eq!(grown.node_type(), NodeType::Node256);
+        assert_eq!(
+            tree.lookup_child(grown, 15).expect("lookup"),
+            Some(extra.to_bits())
+        );
+        assert_eq!(
+            tree.lookup_child(grown, 1).expect("lookup"),
+            Some(children[1])
+        );
+    }
+
+    /// Verifies longest-prefix walks read the leaf words of `Node64` and
+    /// `Node256` nodes.
+    #[test]
+    fn prefix_walk_reads_wide_node_leaves() {
+        let tree = test_tree();
+        let mut children = [EMPTY_CHILD; 64];
+        let bitmap = (1u64 << 1) | (1u64 << 4) | (1u64 << 9);
+        children[0] = tree.make_leaf(10).expect("leaf").to_bits();
+        children[1] = tree.make_leaf(20).expect("leaf").to_bits();
+        children[2] = tree.make_leaf(30).expect("leaf").to_bits();
+        let tag = tree
+            .build_node64(
+                bitmap,
+                &children,
+                tree.make_leaf(7).expect("leaf").to_bits(),
+                3,
+            )
+            .expect("node64 builds");
+        tree.root.store(tag.to_bits(), Ordering::Release);
+        assert_eq!(
+            tree.longest_prefix(&[2]).expect("walk succeeds"),
+            Some((0, 7)),
+            "node64 leaf word is resolved during the walk"
+        );
+        let mut wide = [EMPTY_CHILD; 256];
+        wide[3] = tree.make_leaf(11).expect("leaf").to_bits();
+        let direct = tree
+            .build_node256(&wide, tree.make_leaf(13).expect("leaf").to_bits(), 9)
+            .expect("node256 builds");
+        tree.root.store(direct.to_bits(), Ordering::Release);
+        assert_eq!(
+            tree.longest_prefix(&[0]).expect("walk succeeds"),
+            Some((0, 13)),
+            "node256 leaf word is resolved during the walk"
+        );
+    }
 }
